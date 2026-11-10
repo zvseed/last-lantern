@@ -9,8 +9,10 @@
     * { box-sizing:border-box; }
     html,body { margin:0; min-height:100%; background:radial-gradient(ellipse 80% 58% at 50% -8%,#253371 0,transparent 70%),#060816; color:var(--ink); font-family:Inter,Manrope,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
     body { display:grid; place-items:center; overflow:hidden; }
-    .shell { width:min(100vw,720px); height:100vh; max-height:920px; position:relative; display:grid; grid-template-rows:auto 1fr; padding:18px; }
-    .top { display:flex; align-items:center; justify-content:space-between; gap:12px; z-index:2; padding:0 2px 14px; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse 28% 56% at 12% 6%,rgba(103,225,255,.15),transparent 68%),linear-gradient(119deg,rgba(102,231,255,.09) 0,rgba(102,231,255,.025) 19%,transparent 43%); filter:blur(2px); }
+    body::after { content:""; position:fixed; top:3.5%; left:10%; width:13px; height:13px; border-radius:50%; background:#c9fbff; box-shadow:0 0 14px 8px rgba(105,232,255,.72),0 0 90px 45px rgba(91,200,255,.16); pointer-events:none; }
+    .shell { width:min(100vw,720px); height:100vh; max-height:920px; position:relative; z-index:1; display:grid; grid-template-rows:auto 1fr; padding:18px; }
+    .top { display:flex; align-items:center; justify-content:flex-end; gap:12px; z-index:2; padding:0 2px 14px; }
     .brand { font-weight:750; letter-spacing:-.045em; font-size:clamp(20px,4.2vw,28px); }
     .brand span { color:#ffd66b; }
     .stats { display:flex; gap:7px; }
@@ -69,13 +71,16 @@
     .modal-card p,.modal-card li { color:var(--muted); font-size:14px; line-height:1.45; }
     .modal-card ul { padding-left:19px; }
     .modal-card button { margin-top:8px; width:100%; }
+    .gameover-card { width:min(100%,360px); text-align:center; }
+    .gameover-card p { margin:14px auto 22px; }
+    .gameover-card .leaderboard { text-align:center; }
+    .gameover-card .leaderboard ol { list-style-position:inside; padding-left:0; }
     @media (max-width:520px) { .shell { padding:10px; } .top { padding-bottom:10px; } .stat { min-width:56px; padding:7px 8px; } .stat b { font-size:16px; } .card { padding:22px; border-radius:18px; } canvas { border-radius:18px; } }
   </style>
 </head>
 <body>
   <main class="shell">
     <header class="top">
-      <div class="brand">Последний <span>фонарь</span></div>
       <div class="stats">
         <div class="stat"><b id="score">0</b><small id="scoreLabel">очки</small></div>
         <div class="stat"><b id="best">0</b><small id="bestLabelTop">рекорд</small></div>
@@ -101,8 +106,8 @@
       <div class="modal hidden" id="rulesModal"><div class="modal-card"><h2>Как играть</h2><ul><li>Веди фонарь за мышью, пальцем или стрелками.</li><li>Собирай искры и не касайся теней.</li><li>Собери 10 искр подряд — включится множитель ×2 на 6 секунд.</li><li>На 20, 40, 60, 80 очках и дальше ты получаешь заряд спасения.</li></ul><button id="closeRules">Понятно</button></div></div>
       <div class="modal hidden" id="settingsModal"><div class="modal-card"><h2>Настройки</h2><p>Звук можно включать и выключать в любой момент.</p><button id="toggleSound">Звук: включён</button><button class="secondary" id="closeSettings">Готово</button></div></div>
       <div class="overlay hidden" id="gameover">
-        <div class="card">
-          <h1>Игра окончена</h1>
+        <div class="card gameover-card">
+          <h1>Вы проиграли</h1>
           <p><span id="resultLabel">Твой результат:</span> <strong id="final">0</strong><br><span id="bestLabel">Лучший результат:</span> <strong id="finalBest">0</strong></p>
           <button id="again">Попробовать ещё</button>
           <div class="leaderboard"><h3 id="leaderboardTitleOver">Мои лучшие результаты</h3><ol id="leaderboardListOver"><li>Пока нет результатов</li></ol></div>
@@ -162,12 +167,11 @@
       const scoresKey = 'last-lantern-scores-v1';
       const lang = new URLSearchParams(location.search).get('lang') || (location.hostname.includes('crazygames') ? 'en' : ((navigator.language || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en'));
       const copy = lang === 'en' ? {
-        title:'Shadow Lantern', brand:'Shadow <span>Lantern</span>', intro:'Light the city: guide your lantern, collect sparks and avoid the shadows.', start:'Play now', hint:'Quick tutorial: move with a finger, mouse or arrow keys.', over:'The shadows won', result:'Your score:', best:'Best score:', score:'SCORE', record:'BEST', again:'Play again', tip:'Collect 10 sparks in a row for a bonus', streak:'Streak: ', lit:'Lit houses: ', shield:'SHIELD ', dailyTitle:'Daily spark', dailyTask:'Quest: collect 20 sparks', claim:'Claim shield', claimed:'Shield ready for your next run', leaderboard:'My best scores', objective:'Goal: light 5 houses', milestone:'DISTRICT LIT!', newBest:'NEW BEST!'
+        title:'Shadow Lantern', brand:'Shadow <span>Lantern</span>', intro:'Light the city: guide your lantern, collect sparks and avoid the shadows.', start:'Play now', hint:'Quick tutorial: move with a finger, mouse or arrow keys.', over:'You lost', result:'Your score:', best:'Best score:', score:'SCORE', record:'BEST', again:'Play again', tip:'Collect 10 sparks in a row for a bonus', streak:'Streak: ', lit:'Lit houses: ', shield:'SHIELD ', dailyTitle:'Daily spark', dailyTask:'Quest: collect 20 sparks', claim:'Claim shield', claimed:'Shield ready for your next run', leaderboard:'My best scores', objective:'Goal: light 5 houses', milestone:'DISTRICT LIT!', newBest:'NEW BEST!'
       } : {
-        title:'Последний фонарь', brand:'Последний <span>фонарь</span>', intro:'Зажги город: веди фонарь, собирай искры и не касайся теней.', start:'Играть', hint:'Быстрый туториал: мышь, палец или стрелки.', over:'Тени победили', result:'Твой результат:', best:'Лучший результат:', score:'ОЧКИ', record:'РЕКОРД', again:'Ещё раунд', tip:'Собери 10 искр подряд для бонуса', streak:'Серия: ', lit:'Зажжено домов: ', shield:'ЗАЩИТА ', dailyTitle:'Ежедневная искра', dailyTask:'Задание: собери 20 искр', claim:'Забрать щит', claimed:'Щит готов к следующему раунду', leaderboard:'Мои лучшие результаты', objective:'Цель: зажги 5 домов', milestone:'РАЙОН ЗАЖЖЁН!', newBest:'НОВЫЙ РЕКОРД!'
+        title:'Последний фонарь', brand:'Последний <span>фонарь</span>', intro:'Зажги город: веди фонарь, собирай искры и не касайся теней.', start:'Играть', hint:'Быстрый туториал: мышь, палец или стрелки.', over:'Вы проиграли', result:'Твой результат:', best:'Лучший результат:', score:'ОЧКИ', record:'РЕКОРД', again:'Ещё раунд', tip:'Собери 10 искр подряд для бонуса', streak:'Серия: ', lit:'Зажжено домов: ', shield:'ЗАЩИТА ', dailyTitle:'Ежедневная искра', dailyTask:'Задание: собери 20 искр', claim:'Забрать щит', claimed:'Щит готов к следующему раунду', leaderboard:'Мои лучшие результаты', objective:'Цель: зажги 5 домов', milestone:'РАЙОН ЗАЖЖЁН!', newBest:'НОВЫЙ РЕКОРД!'
       };
       document.documentElement.lang=lang; document.title=copy.title;
-      document.querySelector('.brand').innerHTML=copy.brand;
       document.querySelector('#menu h1').innerHTML=lang==='en'?'<span>Shadow</span> <em>Lantern</em>':'<span>Последний</span> <em>фонарь</em>';
       document.querySelector('#intro').textContent=lang==='en'?'Light the city':'Зажги город';
       startBtn.textContent=copy.start;
