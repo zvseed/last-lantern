@@ -103,8 +103,8 @@
           <div class="rank-panel" id="leaderboard"><h3 id="leaderboardTitle">Мои рекорды</h3><ol id="leaderboardList"><li>Пока нет результатов</li></ol></div>
         </div>
       </div>
-      <div class="modal hidden" id="rulesModal"><div class="modal-card"><h2>Как играть</h2><ul><li>Веди фонарь за мышью, пальцем или стрелками.</li><li>Собирай искры и не касайся теней.</li><li>Собери 10 искр подряд — включится множитель ×2 на 6 секунд.</li><li>На 20, 40, 60, 80 очках и дальше ты получаешь заряд спасения.</li></ul><button id="closeRules">Понятно</button></div></div>
-      <div class="modal hidden" id="settingsModal"><div class="modal-card"><h2>Настройки</h2><p>Звук можно включать и выключать в любой момент.</p><button id="toggleSound">Звук: включён</button><button class="secondary" id="closeSettings">Готово</button></div></div>
+      <div class="modal hidden" id="rulesModal"><div class="modal-card"><h2>Как играть</h2><ul><li>Веди фонарь за мышью, пальцем или стрелками.</li><li>Собирай искры и не касайся теней.</li><li>Собери 10 искр подряд — включится множитель ×2 на 6 секунд.</li><li>Зажги 5 домов — получишь заряд спасения.</li><li>На 20, 40, 60, 80 очках и дальше ты тоже получаешь заряд спасения.</li></ul><button id="closeRules">Понятно</button></div></div>
+      <div class="modal hidden" id="settingsModal"><div class="modal-card"><h2>Настройки</h2><p>Звук и музыка работают только во время раунда.</p><button id="toggleSound">Звук: включён</button><button id="toggleMusic">Музыка: включена</button><button class="secondary" id="closeSettings">Готово</button></div></div>
       <div class="overlay hidden" id="gameover">
         <div class="card gameover-card">
           <h1>Вы проиграли</h1>
@@ -113,7 +113,6 @@
           <div class="leaderboard"><h3 id="leaderboardTitleOver">Мои лучшие результаты</h3><ol id="leaderboardListOver"><li>Пока нет результатов</li></ol></div>
         </div>
       </div>
-      <div class="objective" id="objective">Цель: зажги 5 домов</div>
       <div class="toast" id="toast" role="status"></div>
     </section>
   </main>
@@ -180,9 +179,10 @@
       document.querySelector('#leaderboardTitle').textContent=copy.leaderboard || 'My best scores';
       document.querySelector('#leaderboardTitleOver').textContent=copy.leaderboard || 'My best scores';
       let W=0,H=0,dpr=1, raf=0, last=0, running=false, score=0, streak=0, time=0, toastTimer=0, multiplierTimer=0;
-      let rescueCharges=0, nextRescueAt=20;
+      let rescueCharges=0, nextRescueAt=20, districtRewards=0;
       let soundOn=localStorage.getItem('last-lantern-sound') !== 'off';
-      let audioCtx=null, milestoneIndex=0, tutorialStep=0;
+      let musicOn=localStorage.getItem('last-lantern-music') !== 'off';
+      let audioCtx=null, milestoneIndex=0, tutorialStep=0, musicTimer=null, musicStep=0;
       let best = Number(localStorage.getItem(storeKey) || 0);
       let scores = JSON.parse(localStorage.getItem(scoresKey) || '[]').filter(Number.isFinite).sort((a,b)=>b-a).slice(0,5);
       bestEl.textContent = best;
@@ -195,9 +195,16 @@
         if(!soundOn||crazyMuted)return; ensureAudio(); if(!audioCtx)return;
         const osc=audioCtx.createOscillator(), gain=audioCtx.createGain(); osc.type=type; osc.frequency.setValueAtTime(freq,audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(Math.max(35,freq+slide),audioCtx.currentTime+duration); gain.gain.setValueAtTime(volume,audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration); osc.connect(gain).connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+duration);
       }
+      function playAmbientNote(){
+        if(!musicOn||crazyMuted)return; audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended')audioCtx.resume();
+        const notes=[146.83,174.61,220,261.63,220,174.61]; const freq=notes[musicStep++%notes.length];
+        const osc=audioCtx.createOscillator(), gain=audioCtx.createGain(); osc.type='sine'; osc.frequency.setValueAtTime(freq,audioCtx.currentTime); gain.gain.setValueAtTime(.001,audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.017,audioCtx.currentTime+.18); gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+1.15); osc.connect(gain).connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+1.2);
+      }
+      function startMusic(){ if(!musicOn||musicTimer||crazyMuted)return; playAmbientNote(); musicTimer=setInterval(playAmbientNote,920); }
+      function stopMusic(){ if(musicTimer){clearInterval(musicTimer);musicTimer=null;} }
       function showToast(text){ toastEl.textContent=text; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1500); }
       function burst(x,y,color,count=18){ for(let i=0;i<count;i++)particles.push({x,y,vx:Math.cos(rand(0,Math.PI*2))*rand(35,180),vy:Math.sin(rand(0,Math.PI*2))*rand(35,180),life:rand(.35,.9),max:1,color,r:rand(1,3)}); }
-      function updateObjective(){ const lit=buildings.filter(b=>b.lit>=.9).length; const target=lit<5?5:lit<8?8:buildings.length; objectiveEl.textContent=(copy.objective||'Goal: light 5 houses').replace('5',target)+' · '+lit+'/'+target; }
+      function updateObjective(){ const lit=buildings.filter(b=>b.lit>=.9).length; if(objectiveEl){const target=lit<5?5:lit<8?8:buildings.length; objectiveEl.textContent=(copy.objective||'Goal: light 5 houses').replace('5',target)+' · '+lit+'/'+target;} return lit; }
       function renderLeaderboard(){
         const html=scores.length?scores.map(s=>`<li><b>${s}</b> очков</li>`).join(''):'<li>Пока нет результатов</li>';
         document.querySelector('#leaderboardList').innerHTML=html; document.querySelector('#leaderboardListOver').innerHTML=html;
@@ -210,12 +217,13 @@
         buildings=Array.from({length:Math.max(5,Math.ceil(W/92))},(_,i)=>({x:i*(W/Math.max(5,Math.ceil(W/92))),w:W/Math.max(5,Math.ceil(W/92))+2,h:rand(H*.16,H*.34),lit:0,seed:Math.random()}));
       }
       function reset(){
-        score=0; streak=0; time=0; multiplierTimer=0; milestoneIndex=0; tutorialStep=0; rescueCharges=0; nextRescueAt=20; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
+        score=0; streak=0; time=0; multiplierTimer=0; milestoneIndex=0; tutorialStep=0; rescueCharges=0; nextRescueAt=20; districtRewards=0; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
       }
       function updateStats(){ scoreEl.textContent=score; bestEl.textContent=best; }
-      function start(){ ensureAudio(); menu.classList.add('hidden'); gameover.classList.add('hidden'); reset(); running=true; sdk('gameplayStart'); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop); }
+      function start(){ ensureAudio(); startMusic(); menu.classList.add('hidden'); gameover.classList.add('hidden'); reset(); running=true; sdk('gameplayStart'); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop); }
       function end(){
         running=false;
+        stopMusic();
         sdk('gameplayStop'); tone(110,.32,'sawtooth',.05,-70);
         if(score>best){ best=score; localStorage.setItem(storeKey,String(best)); }
         scores.push(score); scores=scores.sort((a,b)=>b-a).slice(0,5); localStorage.setItem(scoresKey,JSON.stringify(scores));
@@ -232,7 +240,7 @@
         const spawnRate=Math.min(3.8,.72+time*.085); if(Math.random()<dt*spawnRate) addShard();
         if(time>14 && Math.random()<dt*.22) addShard();
         if(time>8 && Math.random()<dt*.045) addPowerup();
-        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=multiplierTimer>0?2:1; streak++; if(streak>0&&streak%10===0){multiplierTimer=6; burst(player.x,player.y,'#b58cff',30); tone(590,.18,'triangle',.05,460); showToast(lang==='en'?'×2 LIGHT RESONANCE!':'СВЕТОВОЙ РЕЗОНАНС ×2!');} tone(multiplierTimer>0?760:520,.07,'sine',.028,multiplierTimer>0?180:80); burst(s.x,s.y,'#8ff1ff',10); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); while(score>=nextRescueAt){rescueCharges=1; nextRescueAt+=20; burst(player.x,player.y,'#ffd66b',26); tone(360,.18,'triangle',.05,420); showToast(lang==='en'?'RESCUE CHARGE READY':'ЗАРЯД СПАСЕНИЯ ГОТОВ');} updateStats(); updateObjective(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
+        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=multiplierTimer>0?2:1; streak++; if(streak>0&&streak%10===0){multiplierTimer=6; burst(player.x,player.y,'#b58cff',30); tone(590,.18,'triangle',.05,460); showToast(lang==='en'?'×2 LIGHT RESONANCE!':'СВЕТОВОЙ РЕЗОНАНС ×2!');} tone(multiplierTimer>0?760:520,.07,'sine',.028,multiplierTimer>0?180:80); burst(s.x,s.y,'#8ff1ff',10); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); while(score>=nextRescueAt){rescueCharges=1; nextRescueAt+=20; burst(player.x,player.y,'#ffd66b',26); tone(360,.18,'triangle',.05,420); showToast(lang==='en'?'RESCUE CHARGE READY':'ЗАРЯД СПАСЕНИЯ ГОТОВ');} const lit=updateObjective(); if(districtRewards===0&&lit>=5){districtRewards=1;rescueCharges=1;burst(player.x,player.y,'#ffd66b',34);tone(330,.22,'triangle',.06,620);showToast(lang==='en'?'DISTRICT LIT — RESCUE READY':'РАЙОН ОСВЕЩЁН — СПАСЕНИЕ ГОТОВО');} updateStats(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
         if(streak>=10 && streak%10===0 && sparks.length===0) addSpark();
         powerups=powerups.filter(p=>{p.phase+=dt*5;p.ttl-=dt;if(dist(player,p)<player.r+p.r+6){player.invuln=5;burst(p.x,p.y,'#ffd66b',28);tone(280,.2,'triangle',.06,500);showToast(lang==='en'?'PRISM SHIELD!':'РАДУЖНЫЙ ЩИТ!');return false;}return p.ttl>0;});
         shards=shards.filter(o=>{o.x+=o.vx*dt;o.y+=o.vy*dt;o.rot+=o.spin*dt;o.phase+=dt*4; if(dist(player,o)<player.r+o.r-2){if(player.invuln>0){burst(o.x,o.y,'#ffd66b',15);tone(210,.08,'square',.025,140);return false;}if(rescueCharges>0){rescueCharges--;player.invuln=2.5;shards=[];burst(player.x,player.y,'#ffd66b',34);tone(420,.22,'triangle',.06,360);showToast(lang==='en'?'SAVED!':'СПАСЕНИЕ!');return false;}end();return false;} return o.x>-50&&o.x<W+50&&o.y>-50&&o.y<H+50;});
@@ -256,8 +264,11 @@
       canvas.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='touch'){const p=point(e);player.tx=p.x;player.ty=p.y;}});
       window.addEventListener('keydown',e=>{const step=34;if(e.key==='ArrowLeft')player.tx-=step;if(e.key==='ArrowRight')player.tx+=step;if(e.key==='ArrowUp')player.ty-=step;if(e.key==='ArrowDown')player.ty+=step;});
       const toggleSoundBtn=document.querySelector('#toggleSound');
+      const toggleMusicBtn=document.querySelector('#toggleMusic');
       function toggleSound(){soundOn=!soundOn;localStorage.setItem('last-lantern-sound',soundOn?'on':'off');toggleSoundBtn.textContent='Звук: '+(soundOn?'включён':'выключен');if(soundOn)tone(520,.08,'sine',.03,90);}
       toggleSoundBtn.textContent='Звук: '+(soundOn?'включён':'выключен');
+      toggleMusicBtn.textContent='Музыка: '+(musicOn?'включена':'выключена');
+      toggleMusicBtn.addEventListener('click',()=>{musicOn=!musicOn;localStorage.setItem('last-lantern-music',musicOn?'on':'off');toggleMusicBtn.textContent='Музыка: '+(musicOn?'включена':'выключена');if(musicOn&&running)startMusic();else if(!musicOn)stopMusic();});
       startBtn.addEventListener('click',start); againBtn.addEventListener('click',start); rulesBtn.addEventListener('click',()=>rulesModal.classList.remove('hidden')); document.querySelector('#closeRules').addEventListener('click',()=>rulesModal.classList.add('hidden')); settingsBtn.addEventListener('click',()=>settingsModal.classList.remove('hidden')); document.querySelector('#closeSettings').addEventListener('click',()=>settingsModal.classList.add('hidden')); toggleSoundBtn.addEventListener('click',toggleSound); window.addEventListener('resize',resize); renderLeaderboard(); updateObjective(); resize(); draw();
     })();
   </script>
