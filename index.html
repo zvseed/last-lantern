@@ -21,7 +21,6 @@
     canvas { width:100%; height:100%; max-height:820px; border-radius:22px; border:1px solid rgba(141,167,255,.2); background:#080b20; box-shadow:0 22px 80px rgba(0,0,0,.32), inset 0 0 42px rgba(65,98,255,.08); touch-action:none; }
     .overlay { position:absolute; inset:0; display:grid; place-items:center; padding:20px; pointer-events:none; }
     .card { width:min(100%,404px); pointer-events:auto; padding:26px; border-radius:20px; border:1px solid rgba(173,194,255,.16); background:linear-gradient(145deg,rgba(21,29,64,.89),rgba(11,16,39,.93)); backdrop-filter:blur(18px); box-shadow:0 24px 70px rgba(0,0,0,.33); text-align:left; }
-    .card::before { content:"НОЧНАЯ АРКАДА"; display:block; margin-bottom:12px; color:#7beaff; font-size:10px; font-weight:800; letter-spacing:.16em; }
     h1 { margin:0; font-size:clamp(30px,6vw,42px); letter-spacing:-.055em; line-height:1.02; }
     .card p { margin:13px 0 20px; color:var(--muted); line-height:1.5; max-width:330px; font-size:15px; }
     button { border:0; border-radius:12px; padding:13px 18px; color:#07131d; background:linear-gradient(135deg,#76eaff,#a4f4ff); font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 28px rgba(99,230,255,.17); transition:transform .18s ease,filter .18s ease; }
@@ -44,6 +43,31 @@
     .hint { margin:18px 0 0!important; padding-top:14px; border-top:1px solid var(--line); font-size:11px!important; }
     .hidden { display:none; }
     .tip { position:absolute; left:22px; bottom:18px; color:rgba(220,230,255,.48); font-size:11px; pointer-events:none; }
+    .menu-card { width:min(100%,520px); padding:22px 14px 16px; border:0; background:transparent; box-shadow:none; text-align:center; backdrop-filter:none; }
+    .menu-brand { display:grid; justify-items:center; gap:8px; margin-bottom:24px; }
+    .lantern-orb { width:48px; height:48px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#fff 0 9%,#83edff 11% 35%,#48c6eb 37% 52%,rgba(72,198,235,.06) 72%); box-shadow:0 0 24px #64e9ff,0 0 64px rgba(76,205,255,.42); }
+    .menu-brand h1 { margin:0; display:flex; align-items:baseline; justify-content:center; gap:.24em; font-size:clamp(34px,7vw,66px); font-weight:900; letter-spacing:-.055em; text-transform:uppercase; text-wrap:balance; }
+    .menu-brand h1 span { color:#f8faff; }
+    .menu-brand h1 em { font-style:normal; color:#ffd45e; text-shadow:0 0 24px rgba(255,194,64,.32); }
+    .menu-subtitle { display:flex; align-items:center; gap:14px; color:#c7d0fb; font-size:clamp(15px,3.2vw,23px); letter-spacing:.06em; }
+    .menu-subtitle::before,.menu-subtitle::after { content:""; width:74px; height:2px; border-radius:2px; background:linear-gradient(90deg,transparent,#7f8cff); }
+    .menu-subtitle::after { transform:scaleX(-1); }
+    .menu-actions { display:grid; gap:12px; width:min(100%,340px); margin:0 auto; }
+    .menu-actions button { width:100%; min-height:54px; padding:12px 18px; border-radius:999px; font-size:20px; letter-spacing:.07em; text-transform:uppercase; }
+    .menu-actions .start-main { color:#efffff; border:2px solid #70f5ff; background:linear-gradient(90deg,rgba(9,103,137,.92),rgba(8,55,95,.92)); box-shadow:0 0 0 2px rgba(102,236,255,.12),0 0 32px rgba(65,224,255,.44),inset 0 0 18px rgba(99,230,255,.22); }
+    .menu-actions .outline { color:#edf0ff; border:2px solid rgba(139,135,255,.86); background:rgba(15,22,66,.72); box-shadow:inset 0 0 18px rgba(120,100,255,.08); }
+    .rank-panel { width:min(100%,340px); margin:18px auto 0; padding:12px 16px; border:1px solid rgba(150,176,255,.18); border-radius:16px; background:rgba(7,12,35,.46); text-align:left; }
+    .rank-panel h3 { display:flex; justify-content:space-between; margin:0 0 8px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; }
+    .rank-panel h3 span { color:#7eeaff; font-size:10px; }
+    .rank-panel ol { margin:0; padding-left:21px; color:var(--muted); font-size:12px; }
+    .rank-panel li { padding:2px 0; }
+    .rank-panel b { color:#ffd45e; }
+    .modal { position:absolute; inset:0; z-index:5; display:grid; place-items:center; padding:20px; background:rgba(2,5,17,.56); backdrop-filter:blur(7px); }
+    .modal-card { width:min(100%,360px); padding:23px; border:1px solid var(--line); border-radius:18px; background:#10183b; box-shadow:0 20px 70px rgba(0,0,0,.45); }
+    .modal-card h2 { margin:0 0 11px; font-size:22px; }
+    .modal-card p,.modal-card li { color:var(--muted); font-size:14px; line-height:1.45; }
+    .modal-card ul { padding-left:19px; }
+    .modal-card button { margin-top:8px; width:100%; }
     @media (max-width:520px) { .shell { padding:10px; } .top { padding-bottom:10px; } .stat { min-width:56px; padding:7px 8px; } .stat b { font-size:16px; } .card { padding:22px; border-radius:18px; } canvas { border-radius:18px; } }
   </style>
 </head>
@@ -59,24 +83,26 @@
     <section class="arena">
       <canvas id="game" aria-label="Игровое поле"></canvas>
       <div class="overlay" id="menu">
-        <div class="card">
-          <h1>Последний фонарь</h1>
-          <p id="intro">Зажги город: веди фонарь, собирай искры и не касайся теней.</p>
-          <button id="start">Играть</button>
-          <div class="daily" id="dailyPanel">
-            <strong id="dailyTitle">Ежедневный бонус</strong>
-            <small id="dailyTask">Задание: собери 20 искр — 0/20</small>
-            <button class="secondary" id="dailyClaim">Забрать бонус</button>
+        <div class="card menu-card">
+          <div class="menu-brand">
+            <div class="lantern-orb" aria-hidden="true"></div>
+            <h1><span>Последний</span> <em>фонарь</em></h1>
+            <div class="menu-subtitle" id="intro">Зажги город</div>
           </div>
-          <div class="leaderboard" id="leaderboard"><h3 id="leaderboardTitle">Мои лучшие результаты</h3><ol id="leaderboardList"><li>Пока нет результатов</li></ol></div>
-          <p class="hint">Подсказка в первом раунде: двигайся мышью, пальцем или стрелками.</p>
+          <div class="menu-actions">
+            <button class="start-main" id="start">Играть</button>
+            <button class="outline" id="rules">Правила</button>
+            <button class="outline" id="settings">Настройки</button>
+          </div>
+          <div class="rank-panel" id="leaderboard"><h3 id="leaderboardTitle">Мои рекорды</h3><ol id="leaderboardList"><li>Пока нет результатов</li></ol></div>
         </div>
       </div>
+      <div class="modal hidden" id="rulesModal"><div class="modal-card"><h2>Как играть</h2><ul><li>Веди фонарь за мышью, пальцем или стрелками.</li><li>Собирай искры и не касайся теней.</li><li>На 20, 40, 60, 80 очках и дальше ты получаешь заряд спасения.</li></ul><button id="closeRules">Понятно</button></div></div>
+      <div class="modal hidden" id="settingsModal"><div class="modal-card"><h2>Настройки</h2><p>Звук можно включать и выключать в любой момент.</p><button id="toggleSound">Звук: включён</button><button class="secondary" id="closeSettings">Готово</button></div></div>
       <div class="overlay hidden" id="gameover">
         <div class="card">
           <h1>Игра окончена</h1>
           <p><span id="resultLabel">Твой результат:</span> <strong id="final">0</strong><br><span id="bestLabel">Лучший результат:</span> <strong id="finalBest">0</strong></p>
-          <button class="secondary" id="revive">Второй шанс</button>
           <button id="again">Попробовать ещё</button>
           <div class="leaderboard"><h3 id="leaderboardTitleOver">Мои лучшие результаты</h3><ol id="leaderboardListOver"><li>Пока нет результатов</li></ol></div>
         </div>
@@ -127,13 +153,15 @@
       const bestLabel = document.querySelector('#bestLabel');
       const startBtn = document.querySelector('#start');
       const againBtn = document.querySelector('#again');
-      const reviveBtn = document.querySelector('#revive');
+      const rulesBtn = document.querySelector('#rules');
+      const settingsBtn = document.querySelector('#settings');
+      const rulesModal = document.querySelector('#rulesModal');
+      const settingsModal = document.querySelector('#settingsModal');
       const objectiveEl = document.querySelector('#objective');
       const toastEl = document.querySelector('#toast');
       const audioToggle = document.querySelector('#audioToggle');
       const storeKey = 'last-lantern-best-v2';
       const scoresKey = 'last-lantern-scores-v1';
-      const dailyKey = 'last-lantern-daily-v1';
       const lang = new URLSearchParams(location.search).get('lang') || (location.hostname.includes('crazygames') ? 'en' : ((navigator.language || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en'));
       const copy = lang === 'en' ? {
         title:'Shadow Lantern', brand:'Shadow <span>Lantern</span>', intro:'Light the city: guide your lantern, collect sparks and avoid the shadows.', start:'Play now', hint:'Quick tutorial: move with a finger, mouse or arrow keys.', over:'The shadows won', result:'Your score:', best:'Best score:', score:'SCORE', record:'BEST', again:'Play again', tip:'Collect 10 sparks in a row for a bonus', streak:'Streak: ', lit:'Lit houses: ', shield:'SHIELD ', dailyTitle:'Daily spark', dailyTask:'Quest: collect 20 sparks', claim:'Claim shield', claimed:'Shield ready for your next run', leaderboard:'My best scores', objective:'Goal: light 5 houses', milestone:'DISTRICT LIT!', newBest:'NEW BEST!'
@@ -142,24 +170,19 @@
       };
       document.documentElement.lang=lang; document.title=copy.title;
       document.querySelector('.brand').innerHTML=copy.brand;
-      document.querySelector('#menu h1').textContent=copy.title;
-      document.querySelector('#menu p').textContent=copy.intro;
-      startBtn.textContent=copy.start; document.querySelector('#menu .hint').textContent=copy.hint;
+      document.querySelector('#menu h1').innerHTML=lang==='en'?'<span>Shadow</span> <em>Lantern</em>':'<span>Последний</span> <em>фонарь</em>';
+      document.querySelector('#intro').textContent=lang==='en'?'Light the city':'Зажги город';
+      startBtn.textContent=copy.start;
       document.querySelector('#gameover h1').textContent=copy.over; resultLabel.textContent=copy.result; bestLabel.textContent=copy.best; document.querySelector('#scoreLabel').textContent=copy.score; document.querySelector('#bestLabelTop').textContent=copy.record;
       againBtn.textContent=copy.again; document.querySelector('.tip').textContent=copy.tip;
-      document.querySelector('#dailyTitle').textContent=copy.dailyTitle || 'Daily bonus';
       document.querySelector('#leaderboardTitle').textContent=copy.leaderboard || 'My best scores';
       document.querySelector('#leaderboardTitleOver').textContent=copy.leaderboard || 'My best scores';
       let W=0,H=0,dpr=1, raf=0, last=0, running=false, score=0, streak=0, time=0, toastTimer=0;
-      let reviveUsed=false;
+      let rescueCharges=0, nextRescueAt=20;
       let soundOn=localStorage.getItem('last-lantern-sound') !== 'off';
       let audioCtx=null, milestoneIndex=0, tutorialStep=0;
       let best = Number(localStorage.getItem(storeKey) || 0);
       let scores = JSON.parse(localStorage.getItem(scoresKey) || '[]').filter(Number.isFinite).sort((a,b)=>b-a).slice(0,5);
-      const today = new Date().toISOString().slice(0,10);
-      let daily = JSON.parse(localStorage.getItem(dailyKey) || 'null');
-      if(!daily || daily.date!==today) daily={date:today, progress:0, claimed:false};
-      let dailyShieldPending=false;
       bestEl.textContent = best;
       const player = { x:0, y:0, r:15, tx:0, ty:0 };
       let sparks=[], shards=[], powerups=[], stars=[], buildings=[], particles=[];
@@ -173,17 +196,10 @@
       function showToast(text){ toastEl.textContent=text; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1500); }
       function burst(x,y,color,count=18){ for(let i=0;i<count;i++)particles.push({x,y,vx:Math.cos(rand(0,Math.PI*2))*rand(35,180),vy:Math.sin(rand(0,Math.PI*2))*rand(35,180),life:rand(.35,.9),max:1,color,r:rand(1,3)}); }
       function updateObjective(){ const lit=buildings.filter(b=>b.lit>=.9).length; const target=lit<5?5:lit<8?8:buildings.length; objectiveEl.textContent=(copy.objective||'Goal: light 5 houses').replace('5',target)+' · '+lit+'/'+target; }
-      function saveDaily(){ localStorage.setItem(dailyKey,JSON.stringify(daily)); }
       function renderLeaderboard(){
-        const html=scores.length?scores.map((s,i)=>`<li>${i+1}. <b>${s}</b> очков</li>`).join(''):'<li>Пока нет результатов</li>';
+        const html=scores.length?scores.map(s=>`<li><b>${s}</b> очков</li>`).join(''):'<li>Пока нет результатов</li>';
         document.querySelector('#leaderboardList').innerHTML=html; document.querySelector('#leaderboardListOver').innerHTML=html;
       }
-      function renderDaily(){
-        const progress=Math.min(20,daily.progress||0); const task=document.querySelector('#dailyTask'); const claim=document.querySelector('#dailyClaim');
-        task.textContent=(copy.dailyTask||'Task: collect 20 sparks')+' — '+progress+'/20';
-        claim.textContent=daily.claimed?(copy.claimed||'Bonus claimed — come back tomorrow'):(copy.claim||'Claim bonus'); claim.disabled=daily.claimed;
-      }
-      function claimDaily(){ if(daily.claimed)return; daily.claimed=true; dailyShieldPending=true; saveDaily(); renderDaily(); }
       function resize(){
         const box=canvas.getBoundingClientRect(); dpr=Math.min(devicePixelRatio||1,2);
         W=Math.max(280,box.width); H=Math.max(360,box.height); canvas.width=W*dpr; canvas.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -192,20 +208,16 @@
         buildings=Array.from({length:Math.max(5,Math.ceil(W/92))},(_,i)=>({x:i*(W/Math.max(5,Math.ceil(W/92))),w:W/Math.max(5,Math.ceil(W/92))+2,h:rand(H*.16,H*.34),lit:0,seed:Math.random()}));
       }
       function reset(){
-        score=0; streak=0; time=0; milestoneIndex=0; tutorialStep=0; reviveUsed=false; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
+        score=0; streak=0; time=0; milestoneIndex=0; tutorialStep=0; rescueCharges=0; nextRescueAt=20; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
       }
       function updateStats(){ scoreEl.textContent=score; bestEl.textContent=best; }
-      function start(){ ensureAudio(); menu.classList.add('hidden'); gameover.classList.add('hidden'); reset(); if(dailyShieldPending){player.invuln=5;dailyShieldPending=false;showToast(copy.claimed||'Shield ready');} running=true; sdk('gameplayStart'); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop); }
-      function revive(){
-        if(running || reviveUsed)return;
-        reviveUsed=true; gameover.classList.add('hidden'); running=true; player.invuln=5; shards=[]; powerups=[]; tone(440,.15,'triangle',.05,330); showToast(copy.shield+'5s'); sdk('gameplayStart'); last=performance.now(); raf=requestAnimationFrame(loop);
-      }
+      function start(){ ensureAudio(); menu.classList.add('hidden'); gameover.classList.add('hidden'); reset(); running=true; sdk('gameplayStart'); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop); }
       function end(){
         running=false;
         sdk('gameplayStop'); tone(110,.32,'sawtooth',.05,-70);
         if(score>best){ best=score; localStorage.setItem(storeKey,String(best)); }
         scores.push(score); scores=scores.sort((a,b)=>b-a).slice(0,5); localStorage.setItem(scoresKey,JSON.stringify(scores));
-        finalEl.textContent=score; finalBestEl.textContent=best; updateStats(); reviveBtn.classList.toggle('hidden',reviveUsed); gameover.classList.remove('hidden'); if(score>=best&&score>0)showToast(copy.newBest);
+        finalEl.textContent=score; finalBestEl.textContent=best; updateStats(); gameover.classList.remove('hidden'); if(score>=best&&score>0)showToast(copy.newBest);
         renderLeaderboard();
       }
       function addSpark(){ sparks.push({x:rand(25,W-25),y:rand(55,H-35),r:rand(7,11),phase:rand(0,Math.PI*2)}); }
@@ -218,10 +230,10 @@
         const spawnRate=Math.min(3.8,.72+time*.085); if(Math.random()<dt*spawnRate) addShard();
         if(time>14 && Math.random()<dt*.22) addShard();
         if(time>8 && Math.random()<dt*.045) addPowerup();
-        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=streak>=9?2:1; streak++; tone(streak>=10?760:520,.07,'sine',.028,streak>=10?180:80); burst(s.x,s.y,'#8ff1ff',10); daily.progress=Math.min(20,(daily.progress||0)+1); saveDaily(); renderDaily(); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); updateStats(); updateObjective(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
+        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=streak>=9?2:1; streak++; tone(streak>=10?760:520,.07,'sine',.028,streak>=10?180:80); burst(s.x,s.y,'#8ff1ff',10); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); while(score>=nextRescueAt){rescueCharges=1; nextRescueAt+=20; burst(player.x,player.y,'#ffd66b',26); tone(360,.18,'triangle',.05,420); showToast(lang==='en'?'RESCUE CHARGE READY':'ЗАРЯД СПАСЕНИЯ ГОТОВ');} updateStats(); updateObjective(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
         if(streak>=10 && streak%10===0 && sparks.length===0) addSpark();
         powerups=powerups.filter(p=>{p.phase+=dt*5;p.ttl-=dt;if(dist(player,p)<player.r+p.r+6){player.invuln=5;burst(p.x,p.y,'#ffd66b',28);tone(280,.2,'triangle',.06,500);showToast(lang==='en'?'PRISM SHIELD!':'РАДУЖНЫЙ ЩИТ!');return false;}return p.ttl>0;});
-        shards=shards.filter(o=>{o.x+=o.vx*dt;o.y+=o.vy*dt;o.rot+=o.spin*dt;o.phase+=dt*4; if(dist(player,o)<player.r+o.r-2){if(player.invuln>0){burst(o.x,o.y,'#ffd66b',15);tone(210,.08,'square',.025,140);return false;}end();return false;} return o.x>-50&&o.x<W+50&&o.y>-50&&o.y<H+50;});
+        shards=shards.filter(o=>{o.x+=o.vx*dt;o.y+=o.vy*dt;o.rot+=o.spin*dt;o.phase+=dt*4; if(dist(player,o)<player.r+o.r-2){if(player.invuln>0){burst(o.x,o.y,'#ffd66b',15);tone(210,.08,'square',.025,140);return false;}if(rescueCharges>0){rescueCharges--;player.invuln=2.5;shards=[];burst(player.x,player.y,'#ffd66b',34);tone(420,.22,'triangle',.06,360);showToast(lang==='en'?'SAVED!':'СПАСЕНИЕ!');return false;}end();return false;} return o.x>-50&&o.x<W+50&&o.y>-50&&o.y<H+50;});
         particles=particles.filter(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;return p.life>0;});
       }
       function draw(){
@@ -234,7 +246,7 @@
         shards.forEach(o=>{ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rot);ctx.shadowBlur=o.type==='wisp'?28:18;ctx.shadowColor=o.type==='wisp'?'#b58cff':'#ff5f8f';if(o.type==='wisp'){ctx.globalAlpha=.7+.25*Math.sin(o.phase);ctx.fillStyle='#b58cff';ctx.beginPath();ctx.arc(0,0,o.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f0d7ff';ctx.beginPath();ctx.arc(-o.r*.22,-o.r*.2,o.r*.28,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle='#ff6f9d';ctx.beginPath();ctx.moveTo(0,-o.r*1.25);ctx.lineTo(o.r*.85,o.r*.8);ctx.lineTo(-o.r*.85,o.r*.8);ctx.closePath();ctx.fill();}ctx.restore();});
         particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/.9);ctx.fillStyle=p.color;ctx.shadowBlur=12;ctx.shadowColor=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;
         ctx.save();ctx.translate(player.x,player.y);const beam=ctx.createRadialGradient(0,0,2,0,0,player.r*3.4);beam.addColorStop(0,'rgba(255,248,210,.65)');beam.addColorStop(1,'rgba(99,230,255,0)');ctx.fillStyle=beam;ctx.beginPath();ctx.arc(0,0,player.r*3.4,0,Math.PI*2);ctx.fill();if(player.invuln>0){ctx.globalAlpha=.35+.15*Math.sin(time*12);ctx.strokeStyle='#ffd66b';ctx.lineWidth=4;ctx.shadowBlur=24;ctx.shadowColor='#ffd66b';ctx.beginPath();ctx.arc(0,0,player.r+10+Math.sin(time*7)*2,0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=26;ctx.shadowColor='#63e6ff';ctx.fillStyle='#d7fbff';ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#63e6ff';ctx.beginPath();ctx.arc(0,0,player.r*.42,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.arc(-5,-6,4,0,Math.PI*2);ctx.fill();ctx.restore();
-        ctx.fillStyle='rgba(231,240,255,.7)';ctx.font='12px system-ui';ctx.fillText(copy.streak+streak,18,28);ctx.fillText(copy.lit+buildings.filter(b=>b.lit>=.9).length+'/'+buildings.length,18,46);if(player.invuln>0){ctx.fillStyle='#ffd66b';ctx.fillText(copy.shield+player.invuln.toFixed(1)+'s',18,64);}
+        ctx.fillStyle='rgba(231,240,255,.7)';ctx.font='12px system-ui';ctx.fillText(copy.streak+streak,18,28);ctx.fillText(copy.lit+buildings.filter(b=>b.lit>=.9).length+'/'+buildings.length,18,46);if(rescueCharges>0){ctx.fillStyle='#ffd66b';ctx.fillText(lang==='en'?'RESCUE READY':'СПАСЕНИЕ ГОТОВО',18,64);}else if(player.invuln>0){ctx.fillStyle='#ffd66b';ctx.fillText(copy.shield+player.invuln.toFixed(1)+'s',18,64);}
       }
       function loop(now){ if(!running)return; const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop); }
       function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
@@ -243,7 +255,7 @@
       window.addEventListener('keydown',e=>{const step=34;if(e.key==='ArrowLeft')player.tx-=step;if(e.key==='ArrowRight')player.tx+=step;if(e.key==='ArrowUp')player.ty-=step;if(e.key==='ArrowDown')player.ty+=step;});
       audioToggle.textContent=soundOn?'♪':'×';
       audioToggle.addEventListener('click',()=>{soundOn=!soundOn;localStorage.setItem('last-lantern-sound',soundOn?'on':'off');audioToggle.textContent=soundOn?'♪':'×';if(soundOn)tone(520,.08,'sine',.03,90);});
-      startBtn.addEventListener('click',start); againBtn.addEventListener('click',start); reviveBtn.addEventListener('click',revive); document.querySelector('#dailyClaim').addEventListener('click',claimDaily); window.addEventListener('resize',resize); renderLeaderboard(); renderDaily(); updateObjective(); resize(); draw();
+      startBtn.addEventListener('click',start); againBtn.addEventListener('click',start); rulesBtn.addEventListener('click',()=>rulesModal.classList.remove('hidden')); document.querySelector('#closeRules').addEventListener('click',()=>rulesModal.classList.add('hidden')); settingsBtn.addEventListener('click',()=>settingsModal.classList.remove('hidden')); document.querySelector('#closeSettings').addEventListener('click',()=>settingsModal.classList.add('hidden')); document.querySelector('#toggleSound').addEventListener('click',()=>audioToggle.click()); window.addEventListener('resize',resize); renderLeaderboard(); updateObjective(); resize(); draw();
     })();
   </script>
 </body>
