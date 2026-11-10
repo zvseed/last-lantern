@@ -98,7 +98,7 @@
           <div class="rank-panel" id="leaderboard"><h3 id="leaderboardTitle">Мои рекорды</h3><ol id="leaderboardList"><li>Пока нет результатов</li></ol></div>
         </div>
       </div>
-      <div class="modal hidden" id="rulesModal"><div class="modal-card"><h2>Как играть</h2><ul><li>Веди фонарь за мышью, пальцем или стрелками.</li><li>Собирай искры и не касайся теней.</li><li>На 20, 40, 60, 80 очках и дальше ты получаешь заряд спасения.</li></ul><button id="closeRules">Понятно</button></div></div>
+      <div class="modal hidden" id="rulesModal"><div class="modal-card"><h2>Как играть</h2><ul><li>Веди фонарь за мышью, пальцем или стрелками.</li><li>Собирай искры и не касайся теней.</li><li>Собери 10 искр подряд — включится множитель ×2 на 6 секунд.</li><li>На 20, 40, 60, 80 очках и дальше ты получаешь заряд спасения.</li></ul><button id="closeRules">Понятно</button></div></div>
       <div class="modal hidden" id="settingsModal"><div class="modal-card"><h2>Настройки</h2><p>Звук можно включать и выключать в любой момент.</p><button id="toggleSound">Звук: включён</button><button class="secondary" id="closeSettings">Готово</button></div></div>
       <div class="overlay hidden" id="gameover">
         <div class="card">
@@ -110,8 +110,6 @@
       </div>
       <div class="objective" id="objective">Цель: зажги 5 домов</div>
       <div class="toast" id="toast" role="status"></div>
-      <button class="audio-toggle" id="audioToggle" aria-label="Включить или выключить звук">♪</button>
-      <div class="tip">Собери 10 искр подряд для бонуса</div>
     </section>
   </main>
   <script>
@@ -160,7 +158,6 @@
       const settingsModal = document.querySelector('#settingsModal');
       const objectiveEl = document.querySelector('#objective');
       const toastEl = document.querySelector('#toast');
-      const audioToggle = document.querySelector('#audioToggle');
       const storeKey = 'last-lantern-best-v2';
       const scoresKey = 'last-lantern-scores-v1';
       const lang = new URLSearchParams(location.search).get('lang') || (location.hostname.includes('crazygames') ? 'en' : ((navigator.language || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en'));
@@ -175,10 +172,10 @@
       document.querySelector('#intro').textContent=lang==='en'?'Light the city':'Зажги город';
       startBtn.textContent=copy.start;
       document.querySelector('#gameover h1').textContent=copy.over; resultLabel.textContent=copy.result; bestLabel.textContent=copy.best; document.querySelector('#scoreLabel').textContent=copy.score; document.querySelector('#bestLabelTop').textContent=copy.record;
-      againBtn.textContent=copy.again; document.querySelector('.tip').textContent=copy.tip;
+      againBtn.textContent=copy.again;
       document.querySelector('#leaderboardTitle').textContent=copy.leaderboard || 'My best scores';
       document.querySelector('#leaderboardTitleOver').textContent=copy.leaderboard || 'My best scores';
-      let W=0,H=0,dpr=1, raf=0, last=0, running=false, score=0, streak=0, time=0, toastTimer=0;
+      let W=0,H=0,dpr=1, raf=0, last=0, running=false, score=0, streak=0, time=0, toastTimer=0, multiplierTimer=0;
       let rescueCharges=0, nextRescueAt=20;
       let soundOn=localStorage.getItem('last-lantern-sound') !== 'off';
       let audioCtx=null, milestoneIndex=0, tutorialStep=0;
@@ -209,7 +206,7 @@
         buildings=Array.from({length:Math.max(5,Math.ceil(W/92))},(_,i)=>({x:i*(W/Math.max(5,Math.ceil(W/92))),w:W/Math.max(5,Math.ceil(W/92))+2,h:rand(H*.16,H*.34),lit:0,seed:Math.random()}));
       }
       function reset(){
-        score=0; streak=0; time=0; milestoneIndex=0; tutorialStep=0; rescueCharges=0; nextRescueAt=20; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
+        score=0; streak=0; time=0; multiplierTimer=0; milestoneIndex=0; tutorialStep=0; rescueCharges=0; nextRescueAt=20; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
       }
       function updateStats(){ scoreEl.textContent=score; bestEl.textContent=best; }
       function start(){ ensureAudio(); menu.classList.add('hidden'); gameover.classList.add('hidden'); reset(); running=true; sdk('gameplayStart'); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop); }
@@ -226,12 +223,12 @@
       function addShard(){ const edge=Math.floor(rand(0,4)); let x,y; if(edge===0){x=rand(0,W);y=-20;}else if(edge===1){x=W+20;y=rand(0,H);}else if(edge===2){x=rand(0,W);y=H+20;}else{x=-20;y=rand(0,H);} const ang=Math.atan2(player.y-y,player.x-x)+rand(-.42,.42); const type=Math.random()<(time>18?.3:.12)?'wisp':'shard'; const speed=(type==='wisp'?rand(100,150):rand(130,195))+time*6; shards.push({x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,r:type==='wisp'?rand(11,15):rand(9,16),rot:rand(0,7),spin:rand(-3.5,3.5),type,phase:rand(0,6)}); }
       function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
       function update(dt){
-        time+=dt; const follow=Math.min(1,dt*8); player.x+=(player.tx-player.x)*follow; player.y+=(player.ty-player.y)*follow; player.x=Math.max(18,Math.min(W-18,player.x)); player.y=Math.max(55,Math.min(H-18,player.y)); player.invuln=Math.max(0,(player.invuln||0)-dt);
+        time+=dt; multiplierTimer=Math.max(0,multiplierTimer-dt); const follow=Math.min(1,dt*8); player.x+=(player.tx-player.x)*follow; player.y+=(player.ty-player.y)*follow; player.x=Math.max(18,Math.min(W-18,player.x)); player.y=Math.max(55,Math.min(H-18,player.y)); player.invuln=Math.max(0,(player.invuln||0)-dt);
         const interval=Math.max(.22,1.05-time*.018); if(!sparks.length) addSpark();
         const spawnRate=Math.min(3.8,.72+time*.085); if(Math.random()<dt*spawnRate) addShard();
         if(time>14 && Math.random()<dt*.22) addShard();
         if(time>8 && Math.random()<dt*.045) addPowerup();
-        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=streak>=9?2:1; streak++; tone(streak>=10?760:520,.07,'sine',.028,streak>=10?180:80); burst(s.x,s.y,'#8ff1ff',10); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); while(score>=nextRescueAt){rescueCharges=1; nextRescueAt+=20; burst(player.x,player.y,'#ffd66b',26); tone(360,.18,'triangle',.05,420); showToast(lang==='en'?'RESCUE CHARGE READY':'ЗАРЯД СПАСЕНИЯ ГОТОВ');} updateStats(); updateObjective(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
+        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=multiplierTimer>0?2:1; streak++; if(streak>0&&streak%10===0){multiplierTimer=6; burst(player.x,player.y,'#b58cff',30); tone(590,.18,'triangle',.05,460); showToast(lang==='en'?'×2 LIGHT RESONANCE!':'СВЕТОВОЙ РЕЗОНАНС ×2!');} tone(multiplierTimer>0?760:520,.07,'sine',.028,multiplierTimer>0?180:80); burst(s.x,s.y,'#8ff1ff',10); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); while(score>=nextRescueAt){rescueCharges=1; nextRescueAt+=20; burst(player.x,player.y,'#ffd66b',26); tone(360,.18,'triangle',.05,420); showToast(lang==='en'?'RESCUE CHARGE READY':'ЗАРЯД СПАСЕНИЯ ГОТОВ');} updateStats(); updateObjective(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
         if(streak>=10 && streak%10===0 && sparks.length===0) addSpark();
         powerups=powerups.filter(p=>{p.phase+=dt*5;p.ttl-=dt;if(dist(player,p)<player.r+p.r+6){player.invuln=5;burst(p.x,p.y,'#ffd66b',28);tone(280,.2,'triangle',.06,500);showToast(lang==='en'?'PRISM SHIELD!':'РАДУЖНЫЙ ЩИТ!');return false;}return p.ttl>0;});
         shards=shards.filter(o=>{o.x+=o.vx*dt;o.y+=o.vy*dt;o.rot+=o.spin*dt;o.phase+=dt*4; if(dist(player,o)<player.r+o.r-2){if(player.invuln>0){burst(o.x,o.y,'#ffd66b',15);tone(210,.08,'square',.025,140);return false;}if(rescueCharges>0){rescueCharges--;player.invuln=2.5;shards=[];burst(player.x,player.y,'#ffd66b',34);tone(420,.22,'triangle',.06,360);showToast(lang==='en'?'SAVED!':'СПАСЕНИЕ!');return false;}end();return false;} return o.x>-50&&o.x<W+50&&o.y>-50&&o.y<H+50;});
@@ -247,16 +244,17 @@
         shards.forEach(o=>{ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rot);ctx.shadowBlur=o.type==='wisp'?28:18;ctx.shadowColor=o.type==='wisp'?'#b58cff':'#ff5f8f';if(o.type==='wisp'){ctx.globalAlpha=.7+.25*Math.sin(o.phase);ctx.fillStyle='#b58cff';ctx.beginPath();ctx.arc(0,0,o.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f0d7ff';ctx.beginPath();ctx.arc(-o.r*.22,-o.r*.2,o.r*.28,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle='#ff6f9d';ctx.beginPath();ctx.moveTo(0,-o.r*1.25);ctx.lineTo(o.r*.85,o.r*.8);ctx.lineTo(-o.r*.85,o.r*.8);ctx.closePath();ctx.fill();}ctx.restore();});
         particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/.9);ctx.fillStyle=p.color;ctx.shadowBlur=12;ctx.shadowColor=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;
         ctx.save();ctx.translate(player.x,player.y);const beam=ctx.createRadialGradient(0,0,2,0,0,player.r*3.4);beam.addColorStop(0,'rgba(255,248,210,.65)');beam.addColorStop(1,'rgba(99,230,255,0)');ctx.fillStyle=beam;ctx.beginPath();ctx.arc(0,0,player.r*3.4,0,Math.PI*2);ctx.fill();if(player.invuln>0){ctx.globalAlpha=.35+.15*Math.sin(time*12);ctx.strokeStyle='#ffd66b';ctx.lineWidth=4;ctx.shadowBlur=24;ctx.shadowColor='#ffd66b';ctx.beginPath();ctx.arc(0,0,player.r+10+Math.sin(time*7)*2,0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=26;ctx.shadowColor='#63e6ff';ctx.fillStyle='#d7fbff';ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#63e6ff';ctx.beginPath();ctx.arc(0,0,player.r*.42,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.arc(-5,-6,4,0,Math.PI*2);ctx.fill();ctx.restore();
-        ctx.fillStyle='rgba(231,240,255,.7)';ctx.font='12px system-ui';ctx.fillText(copy.streak+streak,18,28);ctx.fillText(copy.lit+buildings.filter(b=>b.lit>=.9).length+'/'+buildings.length,18,46);if(rescueCharges>0){ctx.fillStyle='#ffd66b';ctx.fillText(lang==='en'?'RESCUE READY':'СПАСЕНИЕ ГОТОВО',18,64);}else if(player.invuln>0){ctx.fillStyle='#ffd66b';ctx.fillText(copy.shield+player.invuln.toFixed(1)+'s',18,64);}
+        ctx.fillStyle='rgba(231,240,255,.7)';ctx.font='12px system-ui';ctx.fillText(copy.streak+streak,18,28);ctx.fillText(copy.lit+buildings.filter(b=>b.lit>=.9).length+'/'+buildings.length,18,46);if(multiplierTimer>0){ctx.fillStyle='#b99aff';ctx.font='bold 15px system-ui';ctx.fillText('×2  '+multiplierTimer.toFixed(1)+'s',18,66);}else if(rescueCharges>0){ctx.fillStyle='#ffd66b';ctx.fillText(lang==='en'?'RESCUE READY':'СПАСЕНИЕ ГОТОВО',18,64);}else if(player.invuln>0){ctx.fillStyle='#ffd66b';ctx.fillText(copy.shield+player.invuln.toFixed(1)+'s',18,64);}
       }
       function loop(now){ if(!running)return; const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop); }
       function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
       canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);const p=point(e);player.tx=p.x;player.ty=p.y;});
       canvas.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='touch'){const p=point(e);player.tx=p.x;player.ty=p.y;}});
       window.addEventListener('keydown',e=>{const step=34;if(e.key==='ArrowLeft')player.tx-=step;if(e.key==='ArrowRight')player.tx+=step;if(e.key==='ArrowUp')player.ty-=step;if(e.key==='ArrowDown')player.ty+=step;});
-      audioToggle.textContent=soundOn?'♪':'×';
-      audioToggle.addEventListener('click',()=>{soundOn=!soundOn;localStorage.setItem('last-lantern-sound',soundOn?'on':'off');audioToggle.textContent=soundOn?'♪':'×';if(soundOn)tone(520,.08,'sine',.03,90);});
-      startBtn.addEventListener('click',start); againBtn.addEventListener('click',start); rulesBtn.addEventListener('click',()=>rulesModal.classList.remove('hidden')); document.querySelector('#closeRules').addEventListener('click',()=>rulesModal.classList.add('hidden')); settingsBtn.addEventListener('click',()=>settingsModal.classList.remove('hidden')); document.querySelector('#closeSettings').addEventListener('click',()=>settingsModal.classList.add('hidden')); document.querySelector('#toggleSound').addEventListener('click',()=>audioToggle.click()); window.addEventListener('resize',resize); renderLeaderboard(); updateObjective(); resize(); draw();
+      const toggleSoundBtn=document.querySelector('#toggleSound');
+      function toggleSound(){soundOn=!soundOn;localStorage.setItem('last-lantern-sound',soundOn?'on':'off');toggleSoundBtn.textContent='Звук: '+(soundOn?'включён':'выключен');if(soundOn)tone(520,.08,'sine',.03,90);}
+      toggleSoundBtn.textContent='Звук: '+(soundOn?'включён':'выключен');
+      startBtn.addEventListener('click',start); againBtn.addEventListener('click',start); rulesBtn.addEventListener('click',()=>rulesModal.classList.remove('hidden')); document.querySelector('#closeRules').addEventListener('click',()=>rulesModal.classList.add('hidden')); settingsBtn.addEventListener('click',()=>settingsModal.classList.remove('hidden')); document.querySelector('#closeSettings').addEventListener('click',()=>settingsModal.classList.add('hidden')); toggleSoundBtn.addEventListener('click',toggleSound); window.addEventListener('resize',resize); renderLeaderboard(); updateObjective(); resize(); draw();
     })();
   </script>
 </body>
