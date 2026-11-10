@@ -5,44 +5,46 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Последний фонарь — игра на реакцию</title>
   <style>
-    :root { --bg:#080c1d; --panel:rgba(16,23,52,.88); --ink:#f7f8ff; --muted:#aab4d4; --cyan:#63e6ff; --pink:#ff5f8f; }
+    :root { --bg:#060816; --panel:rgba(13,18,43,.84); --panel-soft:rgba(255,255,255,.055); --ink:#f5f7ff; --muted:#9da9ca; --cyan:#71e8ff; --pink:#ff6d9d; --line:rgba(170,190,255,.16); }
     * { box-sizing:border-box; }
-    html,body { margin:0; min-height:100%; background:radial-gradient(circle at 50% 0,#18245a 0,#080c1d 48%,#050711 100%); color:var(--ink); font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif; }
+    html,body { margin:0; min-height:100%; background:radial-gradient(ellipse 80% 58% at 50% -8%,#253371 0,transparent 70%),#060816; color:var(--ink); font-family:Inter,Manrope,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
     body { display:grid; place-items:center; overflow:hidden; }
-    .shell { width:min(100vw,720px); height:100vh; max-height:920px; position:relative; display:grid; grid-template-rows:auto 1fr; padding:14px; }
-    .top { display:flex; align-items:center; justify-content:space-between; gap:10px; z-index:2; }
-    .brand { font-weight:800; letter-spacing:.02em; font-size:clamp(18px,4vw,26px); }
+    .shell { width:min(100vw,720px); height:100vh; max-height:920px; position:relative; display:grid; grid-template-rows:auto 1fr; padding:18px; }
+    .top { display:flex; align-items:center; justify-content:space-between; gap:12px; z-index:2; padding:0 2px 14px; }
+    .brand { font-weight:750; letter-spacing:-.045em; font-size:clamp(20px,4.2vw,28px); }
     .brand span { color:#ffd66b; }
-    .stats { display:flex; gap:8px; }
-    .stat { min-width:72px; padding:8px 11px; border:1px solid rgba(148,170,255,.2); background:rgba(11,16,38,.72); border-radius:14px; text-align:center; }
-    .stat b { display:block; font-size:18px; line-height:1; }
-    .stat small { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.1em; }
+    .stats { display:flex; gap:7px; }
+    .stat { min-width:68px; padding:9px 10px 8px; border:1px solid var(--line); background:rgba(8,12,31,.52); border-radius:12px; text-align:center; }
+    .stat b { display:block; font-size:18px; font-variant-numeric:tabular-nums; line-height:1; }
+    .stat small { color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:.12em; }
     .arena { min-height:0; position:relative; display:grid; place-items:center; }
-    canvas { width:100%; height:100%; max-height:820px; border-radius:26px; border:1px solid rgba(130,163,255,.22); background:#080b20; box-shadow:0 20px 80px rgba(0,0,0,.35), inset 0 0 40px rgba(65,98,255,.08); touch-action:none; }
-    .overlay { position:absolute; inset:0; display:grid; place-items:center; padding:22px; pointer-events:none; }
-    .card { width:min(100%,430px); pointer-events:auto; padding:28px 24px; border-radius:24px; border:1px solid rgba(145,173,255,.22); background:var(--panel); backdrop-filter:blur(16px); box-shadow:0 20px 70px rgba(0,0,0,.35); text-align:center; }
-    h1 { margin:0 0 10px; font-size:clamp(28px,7vw,52px); line-height:1; }
-    .card p { margin:12px auto 22px; color:var(--muted); line-height:1.5; max-width:330px; }
-    button { border:0; border-radius:14px; padding:14px 22px; color:#06121b; background:linear-gradient(135deg,var(--cyan),#b3f5ff); font-weight:800; font-size:16px; cursor:pointer; box-shadow:0 8px 28px rgba(99,230,255,.2); }
+    canvas { width:100%; height:100%; max-height:820px; border-radius:22px; border:1px solid rgba(141,167,255,.2); background:#080b20; box-shadow:0 22px 80px rgba(0,0,0,.32), inset 0 0 42px rgba(65,98,255,.08); touch-action:none; }
+    .overlay { position:absolute; inset:0; display:grid; place-items:center; padding:20px; pointer-events:none; }
+    .card { width:min(100%,404px); pointer-events:auto; padding:26px; border-radius:20px; border:1px solid rgba(173,194,255,.16); background:linear-gradient(145deg,rgba(21,29,64,.89),rgba(11,16,39,.93)); backdrop-filter:blur(18px); box-shadow:0 24px 70px rgba(0,0,0,.33); text-align:left; }
+    .card::before { content:"НОЧНАЯ АРКАДА"; display:block; margin-bottom:12px; color:#7beaff; font-size:10px; font-weight:800; letter-spacing:.16em; }
+    h1 { margin:0; font-size:clamp(30px,6vw,42px); letter-spacing:-.055em; line-height:1.02; }
+    .card p { margin:13px 0 20px; color:var(--muted); line-height:1.5; max-width:330px; font-size:15px; }
+    button { border:0; border-radius:12px; padding:13px 18px; color:#07131d; background:linear-gradient(135deg,#76eaff,#a4f4ff); font-weight:800; font-size:15px; cursor:pointer; box-shadow:0 8px 28px rgba(99,230,255,.17); transition:transform .18s ease,filter .18s ease; }
+    button:hover { filter:brightness(1.06); transform:translateY(-1px); }
     button:active { transform:translateY(1px) scale(.99); }
-    .secondary { margin-top:10px; color:#fff; background:linear-gradient(135deg,#7b5cff,#b58cff); box-shadow:0 8px 28px rgba(123,92,255,.2); }
+    .secondary { margin-top:10px; color:#fff; background:linear-gradient(135deg,#7d62ff,#aa8cff); box-shadow:0 8px 28px rgba(123,92,255,.2); }
     .objective { position:absolute; top:16px; left:50%; transform:translateX(-50%); padding:7px 12px; border:1px solid rgba(255,214,107,.25); border-radius:999px; background:rgba(8,12,29,.72); color:#ffe7a3; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; pointer-events:none; white-space:nowrap; }
     .toast { position:absolute; top:56px; left:50%; transform:translate(-50%,-12px); opacity:0; padding:9px 14px; border-radius:14px; background:linear-gradient(135deg,#ffd66b,#ff9e59); color:#291704; font-size:13px; font-weight:900; pointer-events:none; transition:.24s ease; }
     .toast.show { opacity:1; transform:translate(-50%,0); }
     .audio-toggle { position:absolute; right:18px; bottom:15px; width:34px; height:34px; border-radius:50%; padding:0; color:#dffaff; background:rgba(10,15,37,.68); border:1px solid rgba(148,170,255,.25); box-shadow:none; font-size:15px; }
-    .daily { margin:18px auto 0; padding:12px; border:1px solid rgba(255,214,107,.2); border-radius:16px; background:rgba(255,214,107,.06); text-align:left; max-width:330px; }
-    .daily strong { color:#ffd66b; }
+    .daily { margin:20px 0 0; padding:14px; border:1px solid rgba(255,214,107,.18); border-radius:14px; background:linear-gradient(120deg,rgba(255,214,107,.1),rgba(255,214,107,.035)); text-align:left; max-width:100%; }
+    .daily strong { color:#ffe09a; font-size:14px; }
     .daily small { display:block; margin-top:5px; color:var(--muted); line-height:1.35; }
-    .daily button { margin-top:9px; padding:9px 12px; font-size:13px; }
-    .leaderboard { margin:16px auto 0; max-width:330px; text-align:left; color:var(--muted); font-size:12px; }
-    .leaderboard h3 { margin:0 0 7px; color:var(--ink); font-size:13px; }
+    .daily button { margin-top:10px; padding:9px 12px; border-radius:10px; font-size:12px; }
+    .leaderboard { margin:18px 0 0; max-width:100%; text-align:left; color:var(--muted); font-size:12px; }
+    .leaderboard h3 { margin:0 0 8px; color:var(--ink); font-size:12px; letter-spacing:.01em; }
     .leaderboard ol { margin:0; padding-left:22px; }
     .leaderboard li { padding:2px 0; }
     .leaderboard b { color:#ffd66b; }
-    .hint { margin-top:15px!important; font-size:12px; }
+    .hint { margin:18px 0 0!important; padding-top:14px; border-top:1px solid var(--line); font-size:11px!important; }
     .hidden { display:none; }
     .tip { position:absolute; left:22px; bottom:18px; color:rgba(220,230,255,.48); font-size:11px; pointer-events:none; }
-    @media (max-width:520px) { .shell { padding:9px; } .stat { min-width:58px; padding:7px 8px; } .stat b { font-size:16px; } canvas { border-radius:19px; } }
+    @media (max-width:520px) { .shell { padding:10px; } .top { padding-bottom:10px; } .stat { min-width:56px; padding:7px 8px; } .stat b { font-size:16px; } .card { padding:22px; border-radius:18px; } canvas { border-radius:18px; } }
   </style>
 </head>
 <body>
