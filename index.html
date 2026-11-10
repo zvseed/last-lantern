@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Последний фонарь — игра на реакцию</title>
+  <style>
+    :root { --bg:#080c1d; --panel:rgba(16,23,52,.88); --ink:#f7f8ff; --muted:#aab4d4; --cyan:#63e6ff; --pink:#ff5f8f; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; background:radial-gradient(circle at 50% 0,#18245a 0,#080c1d 48%,#050711 100%); color:var(--ink); font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif; }
+    body { display:grid; place-items:center; overflow:hidden; }
+    .shell { width:min(100vw,720px); height:100vh; max-height:920px; position:relative; display:grid; grid-template-rows:auto 1fr; padding:14px; }
+    .top { display:flex; align-items:center; justify-content:space-between; gap:10px; z-index:2; }
+    .brand { font-weight:800; letter-spacing:.02em; font-size:clamp(18px,4vw,26px); }
+    .brand span { color:#ffd66b; }
+    .stats { display:flex; gap:8px; }
+    .stat { min-width:72px; padding:8px 11px; border:1px solid rgba(148,170,255,.2); background:rgba(11,16,38,.72); border-radius:14px; text-align:center; }
+    .stat b { display:block; font-size:18px; line-height:1; }
+    .stat small { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.1em; }
+    .arena { min-height:0; position:relative; display:grid; place-items:center; }
+    canvas { width:100%; height:100%; max-height:820px; border-radius:26px; border:1px solid rgba(130,163,255,.22); background:#080b20; box-shadow:0 20px 80px rgba(0,0,0,.35), inset 0 0 40px rgba(65,98,255,.08); touch-action:none; }
+    .overlay { position:absolute; inset:0; display:grid; place-items:center; padding:22px; pointer-events:none; }
+    .card { width:min(100%,430px); pointer-events:auto; padding:28px 24px; border-radius:24px; border:1px solid rgba(145,173,255,.22); background:var(--panel); backdrop-filter:blur(16px); box-shadow:0 20px 70px rgba(0,0,0,.35); text-align:center; }
+    h1 { margin:0 0 10px; font-size:clamp(28px,7vw,52px); line-height:1; }
+    .card p { margin:12px auto 22px; color:var(--muted); line-height:1.5; max-width:330px; }
+    button { border:0; border-radius:14px; padding:14px 22px; color:#06121b; background:linear-gradient(135deg,var(--cyan),#b3f5ff); font-weight:800; font-size:16px; cursor:pointer; box-shadow:0 8px 28px rgba(99,230,255,.2); }
+    button:active { transform:translateY(1px) scale(.99); }
+    .secondary { margin-top:10px; color:#fff; background:linear-gradient(135deg,#7b5cff,#b58cff); box-shadow:0 8px 28px rgba(123,92,255,.2); }
+    .objective { position:absolute; top:16px; left:50%; transform:translateX(-50%); padding:7px 12px; border:1px solid rgba(255,214,107,.25); border-radius:999px; background:rgba(8,12,29,.72); color:#ffe7a3; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; pointer-events:none; white-space:nowrap; }
+    .toast { position:absolute; top:56px; left:50%; transform:translate(-50%,-12px); opacity:0; padding:9px 14px; border-radius:14px; background:linear-gradient(135deg,#ffd66b,#ff9e59); color:#291704; font-size:13px; font-weight:900; pointer-events:none; transition:.24s ease; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    .audio-toggle { position:absolute; right:18px; bottom:15px; width:34px; height:34px; border-radius:50%; padding:0; color:#dffaff; background:rgba(10,15,37,.68); border:1px solid rgba(148,170,255,.25); box-shadow:none; font-size:15px; }
+    .daily { margin:18px auto 0; padding:12px; border:1px solid rgba(255,214,107,.2); border-radius:16px; background:rgba(255,214,107,.06); text-align:left; max-width:330px; }
+    .daily strong { color:#ffd66b; }
+    .daily small { display:block; margin-top:5px; color:var(--muted); line-height:1.35; }
+    .daily button { margin-top:9px; padding:9px 12px; font-size:13px; }
+    .leaderboard { margin:16px auto 0; max-width:330px; text-align:left; color:var(--muted); font-size:12px; }
+    .leaderboard h3 { margin:0 0 7px; color:var(--ink); font-size:13px; }
+    .leaderboard ol { margin:0; padding-left:22px; }
+    .leaderboard li { padding:2px 0; }
+    .leaderboard b { color:#ffd66b; }
+    .hint { margin-top:15px!important; font-size:12px; }
+    .hidden { display:none; }
+    .tip { position:absolute; left:22px; bottom:18px; color:rgba(220,230,255,.48); font-size:11px; pointer-events:none; }
+    @media (max-width:520px) { .shell { padding:9px; } .stat { min-width:58px; padding:7px 8px; } .stat b { font-size:16px; } canvas { border-radius:19px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand">Последний <span>фонарь</span></div>
+      <div class="stats">
+        <div class="stat"><b id="score">0</b><small id="scoreLabel">очки</small></div>
+        <div class="stat"><b id="best">0</b><small id="bestLabelTop">рекорд</small></div>
+      </div>
+    </header>
+    <section class="arena">
+      <canvas id="game" aria-label="Игровое поле"></canvas>
+      <div class="overlay" id="menu">
+        <div class="card">
+          <h1>Последний фонарь</h1>
+          <p id="intro">Зажги город: веди фонарь, собирай искры и не касайся теней.</p>
+          <button id="start">Играть</button>
+          <div class="daily" id="dailyPanel">
+            <strong id="dailyTitle">Ежедневный бонус</strong>
+            <small id="dailyTask">Задание: собери 20 искр — 0/20</small>
+            <button class="secondary" id="dailyClaim">Забрать бонус</button>
+          </div>
+          <div class="leaderboard" id="leaderboard"><h3 id="leaderboardTitle">Мои лучшие результаты</h3><ol id="leaderboardList"><li>Пока нет результатов</li></ol></div>
+          <p class="hint">Подсказка в первом раунде: двигайся мышью, пальцем или стрелками.</p>
+        </div>
+      </div>
+      <div class="overlay hidden" id="gameover">
+        <div class="card">
+          <h1>Игра окончена</h1>
+          <p><span id="resultLabel">Твой результат:</span> <strong id="final">0</strong><br><span id="bestLabel">Лучший результат:</span> <strong id="finalBest">0</strong></p>
+          <button class="secondary" id="revive">Второй шанс</button>
+          <button id="again">Попробовать ещё</button>
+          <div class="leaderboard"><h3 id="leaderboardTitleOver">Мои лучшие результаты</h3><ol id="leaderboardListOver"><li>Пока нет результатов</li></ol></div>
+        </div>
+      </div>
+      <div class="objective" id="objective">Цель: зажги 5 домов</div>
+      <div class="toast" id="toast" role="status"></div>
+      <button class="audio-toggle" id="audioToggle" aria-label="Включить или выключить звук">♪</button>
+      <div class="tip">Собери 10 искр подряд для бонуса</div>
+    </section>
+  </main>
+  <script>
+    let crazySdkReady = false, crazyMuted = false;
+    const isCrazyGames = location.hostname.includes('crazygames');
+    if (isCrazyGames) {
+      const script = document.createElement('script');
+      script.src = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
+      script.onload = async () => {
+        try {
+          await window.CrazyGames.SDK.init();
+          crazySdkReady = true;
+          const settings = window.CrazyGames.SDK.game.settings;
+          crazyMuted = Boolean(settings?.muteAudio);
+          window.CrazyGames.SDK.game.addSettingsChangeListener?.((next)=>{ crazyMuted = Boolean(next?.muteAudio); });
+        } catch (_) {}
+      };
+      document.head.appendChild(script);
+    }
+  </script>
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+  <script>
+    // VK keeps its own loading screen until a Mini App confirms that it is ready.
+    // Outside VK the bridge simply rejects, which is safe to ignore.
+    if (window.vkBridge) {
+      window.vkBridge.send('VKWebAppInit').catch(() => {});
+    }
+  </script>
+  <script>
+    (() => {
+      const canvas = document.querySelector('#game');
+      const ctx = canvas.getContext('2d');
+      const menu = document.querySelector('#menu');
+      const gameover = document.querySelector('#gameover');
+      const scoreEl = document.querySelector('#score');
+      const bestEl = document.querySelector('#best');
+      const finalEl = document.querySelector('#final');
+      const finalBestEl = document.querySelector('#finalBest');
+      const resultLabel = document.querySelector('#resultLabel');
+      const bestLabel = document.querySelector('#bestLabel');
+      const startBtn = document.querySelector('#start');
+      const againBtn = document.querySelector('#again');
+      const reviveBtn = document.querySelector('#revive');
+      const objectiveEl = document.querySelector('#objective');
+      const toastEl = document.querySelector('#toast');
+      const audioToggle = document.querySelector('#audioToggle');
+      const storeKey = 'last-lantern-best-v2';
+      const scoresKey = 'last-lantern-scores-v1';
+      const dailyKey = 'last-lantern-daily-v1';
+      const lang = new URLSearchParams(location.search).get('lang') || (location.hostname.includes('crazygames') ? 'en' : ((navigator.language || 'ru').toLowerCase().startsWith('ru') ? 'ru' : 'en'));
+      const copy = lang === 'en' ? {
+        title:'Shadow Lantern', brand:'Shadow <span>Lantern</span>', intro:'Light the city: guide your lantern, collect sparks and avoid the shadows.', start:'Play now', hint:'Quick tutorial: move with a finger, mouse or arrow keys.', over:'The shadows won', result:'Your score:', best:'Best score:', score:'SCORE', record:'BEST', again:'Play again', tip:'Collect 10 sparks in a row for a bonus', streak:'Streak: ', lit:'Lit houses: ', shield:'SHIELD ', dailyTitle:'Daily spark', dailyTask:'Quest: collect 20 sparks', claim:'Claim shield', claimed:'Shield ready for your next run', leaderboard:'My best scores', objective:'Goal: light 5 houses', milestone:'DISTRICT LIT!', newBest:'NEW BEST!'
+      } : {
+        title:'Последний фонарь', brand:'Последний <span>фонарь</span>', intro:'Зажги город: веди фонарь, собирай искры и не касайся теней.', start:'Играть', hint:'Быстрый туториал: мышь, палец или стрелки.', over:'Тени победили', result:'Твой результат:', best:'Лучший результат:', score:'ОЧКИ', record:'РЕКОРД', again:'Ещё раунд', tip:'Собери 10 искр подряд для бонуса', streak:'Серия: ', lit:'Зажжено домов: ', shield:'ЗАЩИТА ', dailyTitle:'Ежедневная искра', dailyTask:'Задание: собери 20 искр', claim:'Забрать щит', claimed:'Щит готов к следующему раунду', leaderboard:'Мои лучшие результаты', objective:'Цель: зажги 5 домов', milestone:'РАЙОН ЗАЖЖЁН!', newBest:'НОВЫЙ РЕКОРД!'
+      };
+      document.documentElement.lang=lang; document.title=copy.title;
+      document.querySelector('.brand').innerHTML=copy.brand;
+      document.querySelector('#menu h1').textContent=copy.title;
+      document.querySelector('#menu p').textContent=copy.intro;
+      startBtn.textContent=copy.start; document.querySelector('#menu .hint').textContent=copy.hint;
+      document.querySelector('#gameover h1').textContent=copy.over; resultLabel.textContent=copy.result; bestLabel.textContent=copy.best; document.querySelector('#scoreLabel').textContent=copy.score; document.querySelector('#bestLabelTop').textContent=copy.record;
+      againBtn.textContent=copy.again; document.querySelector('.tip').textContent=copy.tip;
+      document.querySelector('#dailyTitle').textContent=copy.dailyTitle || 'Daily bonus';
+      document.querySelector('#leaderboardTitle').textContent=copy.leaderboard || 'My best scores';
+      document.querySelector('#leaderboardTitleOver').textContent=copy.leaderboard || 'My best scores';
+      let W=0,H=0,dpr=1, raf=0, last=0, running=false, score=0, streak=0, time=0, toastTimer=0;
+      let reviveUsed=false;
+      let soundOn=localStorage.getItem('last-lantern-sound') !== 'off';
+      let audioCtx=null, milestoneIndex=0, tutorialStep=0;
+      let best = Number(localStorage.getItem(storeKey) || 0);
+      let scores = JSON.parse(localStorage.getItem(scoresKey) || '[]').filter(Number.isFinite).sort((a,b)=>b-a).slice(0,5);
+      const today = new Date().toISOString().slice(0,10);
+      let daily = JSON.parse(localStorage.getItem(dailyKey) || 'null');
+      if(!daily || daily.date!==today) daily={date:today, progress:0, claimed:false};
+      let dailyShieldPending=false;
+      bestEl.textContent = best;
+      const player = { x:0, y:0, r:15, tx:0, ty:0 };
+      let sparks=[], shards=[], powerups=[], stars=[], buildings=[], particles=[];
+      const rand=(a,b)=>a+Math.random()*(b-a);
+      function sdk(method){ try { if(crazySdkReady) window.CrazyGames.SDK.game[method](); } catch(_){} }
+      function ensureAudio(){ if(!soundOn||crazyMuted)return; audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended')audioCtx.resume(); }
+      function tone(freq,duration=.08,type='sine',volume=.035,slide=0){
+        if(!soundOn||crazyMuted)return; ensureAudio(); if(!audioCtx)return;
+        const osc=audioCtx.createOscillator(), gain=audioCtx.createGain(); osc.type=type; osc.frequency.setValueAtTime(freq,audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(Math.max(35,freq+slide),audioCtx.currentTime+duration); gain.gain.setValueAtTime(volume,audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration); osc.connect(gain).connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime+duration);
+      }
+      function showToast(text){ toastEl.textContent=text; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1500); }
+      function burst(x,y,color,count=18){ for(let i=0;i<count;i++)particles.push({x,y,vx:Math.cos(rand(0,Math.PI*2))*rand(35,180),vy:Math.sin(rand(0,Math.PI*2))*rand(35,180),life:rand(.35,.9),max:1,color,r:rand(1,3)}); }
+      function updateObjective(){ const lit=buildings.filter(b=>b.lit>=.9).length; const target=lit<5?5:lit<8?8:buildings.length; objectiveEl.textContent=(copy.objective||'Goal: light 5 houses').replace('5',target)+' · '+lit+'/'+target; }
+      function saveDaily(){ localStorage.setItem(dailyKey,JSON.stringify(daily)); }
+      function renderLeaderboard(){
+        const html=scores.length?scores.map((s,i)=>`<li>${i+1}. <b>${s}</b> очков</li>`).join(''):'<li>Пока нет результатов</li>';
+        document.querySelector('#leaderboardList').innerHTML=html; document.querySelector('#leaderboardListOver').innerHTML=html;
+      }
+      function renderDaily(){
+        const progress=Math.min(20,daily.progress||0); const task=document.querySelector('#dailyTask'); const claim=document.querySelector('#dailyClaim');
+        task.textContent=(copy.dailyTask||'Task: collect 20 sparks')+' — '+progress+'/20';
+        claim.textContent=daily.claimed?(copy.claimed||'Bonus claimed — come back tomorrow'):(copy.claim||'Claim bonus'); claim.disabled=daily.claimed;
+      }
+      function claimDaily(){ if(daily.claimed)return; daily.claimed=true; dailyShieldPending=true; saveDaily(); renderDaily(); }
+      function resize(){
+        const box=canvas.getBoundingClientRect(); dpr=Math.min(devicePixelRatio||1,2);
+        W=Math.max(280,box.width); H=Math.max(360,box.height); canvas.width=W*dpr; canvas.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+        if(!player.x){ player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; }
+        stars=Array.from({length:Math.ceil(W*H/8500)},()=>({x:rand(0,W),y:rand(0,H),r:rand(.5,1.8),a:rand(.2,.8)}));
+        buildings=Array.from({length:Math.max(5,Math.ceil(W/92))},(_,i)=>({x:i*(W/Math.max(5,Math.ceil(W/92))),w:W/Math.max(5,Math.ceil(W/92))+2,h:rand(H*.16,H*.34),lit:0,seed:Math.random()}));
+      }
+      function reset(){
+        score=0; streak=0; time=0; milestoneIndex=0; tutorialStep=0; reviveUsed=false; sparks=[]; shards=[]; powerups=[]; particles=[]; player.invuln=0; buildings.forEach(b=>b.lit=0); player.x=W/2; player.y=H*.78; player.tx=player.x; player.ty=player.y; updateStats(); updateObjective();
+      }
+      function updateStats(){ scoreEl.textContent=score; bestEl.textContent=best; }
+      function start(){ ensureAudio(); menu.classList.add('hidden'); gameover.classList.add('hidden'); reset(); if(dailyShieldPending){player.invuln=5;dailyShieldPending=false;showToast(copy.claimed||'Shield ready');} running=true; sdk('gameplayStart'); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop); }
+      function revive(){
+        if(running || reviveUsed)return;
+        reviveUsed=true; gameover.classList.add('hidden'); running=true; player.invuln=5; shards=[]; powerups=[]; tone(440,.15,'triangle',.05,330); showToast(copy.shield+'5s'); sdk('gameplayStart'); last=performance.now(); raf=requestAnimationFrame(loop);
+      }
+      function end(){
+        running=false;
+        sdk('gameplayStop'); tone(110,.32,'sawtooth',.05,-70);
+        if(score>best){ best=score; localStorage.setItem(storeKey,String(best)); }
+        scores.push(score); scores=scores.sort((a,b)=>b-a).slice(0,5); localStorage.setItem(scoresKey,JSON.stringify(scores));
+        finalEl.textContent=score; finalBestEl.textContent=best; updateStats(); reviveBtn.classList.toggle('hidden',reviveUsed); gameover.classList.remove('hidden'); if(score>=best&&score>0)showToast(copy.newBest);
+        renderLeaderboard();
+      }
+      function addSpark(){ sparks.push({x:rand(25,W-25),y:rand(55,H-35),r:rand(7,11),phase:rand(0,Math.PI*2)}); }
+      function addPowerup(){ if(powerups.length||time<8)return; powerups.push({x:rand(42,W-42),y:rand(75,H-65),r:14,phase:rand(0,Math.PI*2),ttl:8,hue:rand(0,360)}); }
+      function addShard(){ const edge=Math.floor(rand(0,4)); let x,y; if(edge===0){x=rand(0,W);y=-20;}else if(edge===1){x=W+20;y=rand(0,H);}else if(edge===2){x=rand(0,W);y=H+20;}else{x=-20;y=rand(0,H);} const ang=Math.atan2(player.y-y,player.x-x)+rand(-.42,.42); const type=Math.random()<(time>18?.3:.12)?'wisp':'shard'; const speed=(type==='wisp'?rand(100,150):rand(130,195))+time*6; shards.push({x,y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,r:type==='wisp'?rand(11,15):rand(9,16),rot:rand(0,7),spin:rand(-3.5,3.5),type,phase:rand(0,6)}); }
+      function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+      function update(dt){
+        time+=dt; const follow=Math.min(1,dt*8); player.x+=(player.tx-player.x)*follow; player.y+=(player.ty-player.y)*follow; player.x=Math.max(18,Math.min(W-18,player.x)); player.y=Math.max(55,Math.min(H-18,player.y)); player.invuln=Math.max(0,(player.invuln||0)-dt);
+        const interval=Math.max(.22,1.05-time*.018); if(!sparks.length) addSpark();
+        const spawnRate=Math.min(3.8,.72+time*.085); if(Math.random()<dt*spawnRate) addShard();
+        if(time>14 && Math.random()<dt*.22) addShard();
+        if(time>8 && Math.random()<dt*.045) addPowerup();
+        sparks=sparks.filter(s=>{s.phase+=dt*5; if(dist(player,s)<player.r+s.r+5){ score+=streak>=9?2:1; streak++; tone(streak>=10?760:520,.07,'sine',.028,streak>=10?180:80); burst(s.x,s.y,'#8ff1ff',10); daily.progress=Math.min(20,(daily.progress||0)+1); saveDaily(); renderDaily(); const b=buildings[Math.min(buildings.length-1,Math.floor(score/3))]; if(b)b.lit=Math.min(1,b.lit+.35); updateStats(); updateObjective(); if(tutorialStep===0){tutorialStep=1;showToast(lang==='en'?'Good! Avoid the pink shadows.':'Отлично! Избегай розовых теней.');} const goals=[15,40,80]; if(score>=goals[milestoneIndex]){const g=goals[milestoneIndex++]; player.invuln=Math.max(player.invuln,1.6); burst(player.x,player.y,'#ffd66b',36); tone(330,.22,'triangle',.06,620); showToast((copy.milestone||'DISTRICT LIT!')+' +'+g);} return false;} return true;});
+        if(streak>=10 && streak%10===0 && sparks.length===0) addSpark();
+        powerups=powerups.filter(p=>{p.phase+=dt*5;p.ttl-=dt;if(dist(player,p)<player.r+p.r+6){player.invuln=5;burst(p.x,p.y,'#ffd66b',28);tone(280,.2,'triangle',.06,500);showToast(lang==='en'?'PRISM SHIELD!':'РАДУЖНЫЙ ЩИТ!');return false;}return p.ttl>0;});
+        shards=shards.filter(o=>{o.x+=o.vx*dt;o.y+=o.vy*dt;o.rot+=o.spin*dt;o.phase+=dt*4; if(dist(player,o)<player.r+o.r-2){if(player.invuln>0){burst(o.x,o.y,'#ffd66b',15);tone(210,.08,'square',.025,140);return false;}end();return false;} return o.x>-50&&o.x<W+50&&o.y>-50&&o.y<H+50;});
+        particles=particles.filter(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;return p.life>0;});
+      }
+      function draw(){
+        ctx.clearRect(0,0,W,H); const g=ctx.createRadialGradient(player.x,player.y,5,W*.5,H*.55,Math.max(W,H)*.9); g.addColorStop(0,'#263b82');g.addColorStop(.42,'#101a42');g.addColorStop(1,'#050711');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        const haze=ctx.createLinearGradient(0,H*.55,0,H);haze.addColorStop(0,'rgba(120,82,255,0)');haze.addColorStop(1,'rgba(80,24,120,.22)');ctx.fillStyle=haze;ctx.fillRect(0,H*.45,W,H*.55);
+        stars.forEach(s=>{ctx.globalAlpha=s.a*(.7+.3*Math.sin(time*2+s.x));ctx.fillStyle='#b9d5ff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;
+        buildings.forEach((b,bi)=>{const y=H-b.h;ctx.fillStyle=b.lit>.05?'#101a3b':'#0a0d20';ctx.fillRect(b.x,y,b.w,b.h);const cols=Math.max(2,Math.floor(b.w/18)),rows=Math.max(2,Math.floor(b.h/25));for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){const on=b.lit>0&&((row*7+col*11+bi)%10)/10<b.lit;ctx.fillStyle=on?'rgba(255,214,107,.85)':'rgba(65,83,135,.12)';ctx.fillRect(b.x+8+col*18,y+12+row*25,6,9);}});
+        sparks.forEach(s=>{const pulse=1+Math.sin(s.phase)*.16; ctx.save();ctx.shadowBlur=28;ctx.shadowColor='#63e6ff';ctx.fillStyle='#8ff1ff';ctx.beginPath();ctx.arc(s.x,s.y,s.r*pulse,0,Math.PI*2);ctx.fill();ctx.restore();});
+        powerups.forEach(p=>{const pulse=1+Math.sin(p.phase)*.12;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.phase*.12);ctx.shadowBlur=30;ctx.shadowColor='hsl('+p.hue+' 100% 65%)';const grad=ctx.createLinearGradient(-p.r,-p.r,p.r,p.r);grad.addColorStop(0,'#ff5f8f');grad.addColorStop(.33,'#ffd66b');grad.addColorStop(.66,'#63e6ff');grad.addColorStop(1,'#b58cff');ctx.fillStyle=grad;ctx.beginPath();ctx.arc(0,0,p.r*pulse,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,255,255,.82)';ctx.beginPath();ctx.arc(-4,-5,3,0,Math.PI*2);ctx.fill();ctx.restore();});
+        shards.forEach(o=>{ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rot);ctx.shadowBlur=o.type==='wisp'?28:18;ctx.shadowColor=o.type==='wisp'?'#b58cff':'#ff5f8f';if(o.type==='wisp'){ctx.globalAlpha=.7+.25*Math.sin(o.phase);ctx.fillStyle='#b58cff';ctx.beginPath();ctx.arc(0,0,o.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#f0d7ff';ctx.beginPath();ctx.arc(-o.r*.22,-o.r*.2,o.r*.28,0,Math.PI*2);ctx.fill();}else{ctx.fillStyle='#ff6f9d';ctx.beginPath();ctx.moveTo(0,-o.r*1.25);ctx.lineTo(o.r*.85,o.r*.8);ctx.lineTo(-o.r*.85,o.r*.8);ctx.closePath();ctx.fill();}ctx.restore();});
+        particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/.9);ctx.fillStyle=p.color;ctx.shadowBlur=12;ctx.shadowColor=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;
+        ctx.save();ctx.translate(player.x,player.y);const beam=ctx.createRadialGradient(0,0,2,0,0,player.r*3.4);beam.addColorStop(0,'rgba(255,248,210,.65)');beam.addColorStop(1,'rgba(99,230,255,0)');ctx.fillStyle=beam;ctx.beginPath();ctx.arc(0,0,player.r*3.4,0,Math.PI*2);ctx.fill();if(player.invuln>0){ctx.globalAlpha=.35+.15*Math.sin(time*12);ctx.strokeStyle='#ffd66b';ctx.lineWidth=4;ctx.shadowBlur=24;ctx.shadowColor='#ffd66b';ctx.beginPath();ctx.arc(0,0,player.r+10+Math.sin(time*7)*2,0,Math.PI*2);ctx.stroke();}ctx.shadowBlur=26;ctx.shadowColor='#63e6ff';ctx.fillStyle='#d7fbff';ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#63e6ff';ctx.beginPath();ctx.arc(0,0,player.r*.42,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.arc(-5,-6,4,0,Math.PI*2);ctx.fill();ctx.restore();
+        ctx.fillStyle='rgba(231,240,255,.7)';ctx.font='12px system-ui';ctx.fillText(copy.streak+streak,18,28);ctx.fillText(copy.lit+buildings.filter(b=>b.lit>=.9).length+'/'+buildings.length,18,46);if(player.invuln>0){ctx.fillStyle='#ffd66b';ctx.fillText(copy.shield+player.invuln.toFixed(1)+'s',18,64);}
+      }
+      function loop(now){ if(!running)return; const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop); }
+      function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+      canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);const p=point(e);player.tx=p.x;player.ty=p.y;});
+      canvas.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='touch'){const p=point(e);player.tx=p.x;player.ty=p.y;}});
+      window.addEventListener('keydown',e=>{const step=34;if(e.key==='ArrowLeft')player.tx-=step;if(e.key==='ArrowRight')player.tx+=step;if(e.key==='ArrowUp')player.ty-=step;if(e.key==='ArrowDown')player.ty+=step;});
+      audioToggle.textContent=soundOn?'♪':'×';
+      audioToggle.addEventListener('click',()=>{soundOn=!soundOn;localStorage.setItem('last-lantern-sound',soundOn?'on':'off');audioToggle.textContent=soundOn?'♪':'×';if(soundOn)tone(520,.08,'sine',.03,90);});
+      startBtn.addEventListener('click',start); againBtn.addEventListener('click',start); reviveBtn.addEventListener('click',revive); document.querySelector('#dailyClaim').addEventListener('click',claimDaily); window.addEventListener('resize',resize); renderLeaderboard(); renderDaily(); updateObjective(); resize(); draw();
+    })();
+  </script>
+</body>
+</html>
